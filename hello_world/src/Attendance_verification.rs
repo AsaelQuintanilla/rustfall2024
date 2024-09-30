@@ -41,7 +41,7 @@ fn reading_from_console() -> Car {
         color,
     }
 }
-
+//
 impl Car {
     fn save_to_file(&self, path: &str) {
         let mut file = File::create(path).unwrap();

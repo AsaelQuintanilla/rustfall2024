@@ -67,7 +67,7 @@ impl Car {
 }
 
 fn reading_from_file() {
-    let car = Car::from_file("car.txt");
+    let car = Car::from_file("user_info.txt");
     println!("make: {}", car.make);
     println!("model: {}", car.model);
     println!("year: {}", car.year);
@@ -76,7 +76,7 @@ fn reading_from_file() {
 
 fn main() {
     let car = reading_from_console();
-    car.save_to_file("car.txt");
+    car.save_to_file("user_info.txt");
 
     reading_from_file();
 }

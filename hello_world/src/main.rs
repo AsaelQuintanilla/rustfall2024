@@ -1,142 +1,102 @@
-use std::io::{self, Write, Read};
-use std::fs::File;
+// use std::fs;
+// use std::io::{self, Write};
+// use std::path::Path;
 
-struct Car {
-    make: String,
-    model: String,
-    year: u16,
-    color: String,
-}
-
-fn reading_from_console() -> Car {
-    let mut buffer = String::new();
-
-    print!("car make: ");
-    io::stdout().flush().unwrap();
-    io::stdin().read_line(&mut buffer).unwrap();
-    let make = buffer.trim().to_string();
-    buffer.clear();
-
-    print!("car model: ");
-    io::stdout().flush().unwrap();
-    io::stdin().read_line(&mut buffer).unwrap();
-    let model = buffer.trim().to_string();
-    buffer.clear();
-
-    print!("car year: ");
-    io::stdout().flush().unwrap();
-    io::stdin().read_line(&mut buffer).unwrap();
-    let year: u16 = buffer.trim().parse().expect("Please enter a valid year");
-    buffer.clear();
-
-    print!("car color: ");
-    io::stdout().flush().unwrap();
-    io::stdin().read_line(&mut buffer).unwrap();
-    let color = buffer.trim().to_string();
-
-    Car {
-        make,
-        model,
-        year,
-        color,
-    }
-}
-
-impl Car {
-    fn save_to_file(&self, path: &str) {
-        let mut file = File::create(path).unwrap();
-        writeln!(file, "{}", self.make).unwrap();
-        writeln!(file, "{}", self.model).unwrap();
-        writeln!(file, "{}", self.year).unwrap();
-        writeln!(file, "{}", self.color).unwrap();
-    }
-
-    fn from_file(path: &str) -> Car {
-        let mut file = File::open(path).unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-
-        let mut lines = contents.lines();
-        let make = lines.next().unwrap().to_string();
-        let model = lines.next().unwrap().to_string();
-        let year: u16 = lines.next().unwrap().parse().unwrap();
-        let color = lines.next().unwrap().to_string();
-
-        Car { make, model, year, color }
-    }
-}
-
-fn reading_from_file() {
-    let car = Car::from_file("car.txt");
-    println!("make: {}", car.make);
-    println!("model: {}", car.model);
-    println!("year: {}", car.year);
-    println!("color: {}", car.color);
-}
-
-fn main() {
-    let car = reading_from_console();
-    car.save_to_file("car.txt");
-
-    reading_from_file();
-}
-
-//-------------------------------------------------------------
-
-//-------------------------------------------------------------
-// use std::io::{self, Read, Write};
-// use std::fs::File;
-// use std::io::prelude::*;
-
-// struct Config {
-//     username: String,
-//     api_key: String,
-//     port: u16,
+// enum FileOperation {
+//     Create(String),
+//     Rename(String, String),
 // }
 
-// fn reading_from_console() {
-//     let mut buffer = String::new();
-
-//     print!("What's your name? ");
-//     io::stdout().flush().unwrap();
-//     io::stdin().read_line(&mut buffer).unwrap();
-//     let name = buffer.trim().to_string();
-//     buffer.clear();
-
-//     print!("How old are you? ");
-//     io::stdout().flush().unwrap();
-//     io::stdin().read_line(&mut buffer).unwrap();
-//     let age = buffer.trim().parse().unwrap();
-
-//     let person = Person { name, age };
-//     println!("Hi {}, you are {} years old!", person.name, person.age);
-// }
-
-// impl Config {
-//     fn from_file(path: &str) -> Config {
-//         let mut file = File::open(path).unwrap();
-//         let mut contents = String::new();
-//         file.read_to_string(&mut contents).unwrap();
-
-//         let mut lines = contents.lines();
-//         let username = lines.next().unwrap().to_string();
-//         let api_key = lines.next().unwrap().to_string();
-//         let port = lines.next().unwrap().parse().unwrap();
-
-//         Config { username, api_key, port }
+// impl FileOperation{
+//     fn get_user_input() -> String {
+//         let mut buffer: String = String::new();
+//         io::stdin().read_line(buf: &mut buffer).unwrap();
+//         let buffer: &str = buffer.trim();
+//         buffer.to_string();
 //     }
-    
-// }
-// fn reading_from_file() {
-//         let config = Config::from_file("config.txt");
-//         println!("username: {}", config.username);
-//         println!("api key: {}", config.api_key);
-//         println!("port: {}", config.port);
+//     fn validate_file(filename:&String) -> bool{
+//         Path::new(filename).exists()
 //     }
+// }
+
+// fn perform_operation(operation: FileOperation) {
+//     match operation {
+//         FileOperation::Create(filename) => {
+//             // TODO: Implement file creation logic
+//             if FileOperation::validate_file(&filename){
+//                 println!("File already exits");
+//             }
+
+//             fs::File::create("filename.txt").unwrap();
+
+//             println!("File '{}' created successfully.", filename);
+//         }
+//         FileOperation::Rename(old_name, new_name) => {
+//             // TODO: Implement file renaming logic
+//             if FileOperation::validate_file(&old_name){
+//                 println!("Old file doesn't exist");
+//                 return;
+//             }
+//             fs::rename{from: &old_name,to: &new_name}.unwrap();
+//             println!("File renamed from '{}' to '{}' successfully.", old_name, new_name);
+//         }
+//     }
+// }
 
 // fn main() {
-//         // reading_from_console();
-//         reading_from_file();
+//     for _ in 0..2{
+//     println!("Choose an operation:");
+//     println!("1. Create a new file");
+//     println!("2. Rename an existing file");
+
+//     let mut choice = String = FileOperation::get_user_input();
+
+//     match choice.trim() {
+//         "1" => {
+//             // TODO: Prompt for new filename and call perform_operation
+//             println!("Type a name of file you want to create");
+//             let new_file: String = FileOperation::get_user_input();
+//             perform_operation(FileOperation::Create(new_file));
+//         }
+//         "2" => {
+//             // TODO: Prompt for old and new filenames and call perform_operation
+//             println!("Type a name of file you want to rename");
+//             let old_file: String = FileOperation::get_user_input();
+//             println!("Type a new name of file");
+//             let new_name: String = FileOperation::get_user_input();
+//             perform_operation(FileOperation::Rename(old_file,new_name))
+//         }
+//         _ => println!("Invalid choice"),
 //     }
+// }
+// }
 //-------------------------------------------------------------
-//-------------------------------------------------------------
+
+// enum Pets {
+//     Dog(String,u8),
+//     Hamster(String),
+// }
+
+// impl Pets{
+
+//     fn introduce_yourself(&self){
+//         match &self {
+//             Pets::Dog(name: String, age: u8) => {
+//                 println!("Hey my name is {}. I am {} years old",name,age);
+//             },
+//             Pets::Hamster(name: String) => println!("Hey my name is {}",name);
+//         }
+//     }   
+// }
+
+
+// fn main(){
+//     let p1 = Pets::Dog(format!("Black"),3);
+//     let p2 = Pets::Hamster(format!("Brown"));
+
+//     introduce_yourself(p1);
+
+// }
+//---------------------------------------------
+
+

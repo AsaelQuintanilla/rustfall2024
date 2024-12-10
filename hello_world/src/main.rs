@@ -1,102 +1,272 @@
-// use std::fs;
-// use std::io::{self, Write};
-// use std::path::Path;
+// Cargo.toml
+[package]
+name = "gradient_descent"
+version = "0.1.0"
+edition = "2021"
 
-// enum FileOperation {
-//     Create(String),
-//     Rename(String, String),
-// }
+[dependencies]
+rand = "0.8"
+rand_chacha = "0.3"
+ndarray = "0.15"
+ndarray-rand = "0.14"
 
-// impl FileOperation{
-//     fn get_user_input() -> String {
-//         let mut buffer: String = String::new();
-//         io::stdin().read_line(buf: &mut buffer).unwrap();
-//         let buffer: &str = buffer.trim();
-//         buffer.to_string();
-//     }
-//     fn validate_file(filename:&String) -> bool{
-//         Path::new(filename).exists()
-//     }
-// }
+// src/main.rs
+use ndarray::Array1;
+use ndarray_rand::RandomExt;
+use ndarray_rand::rand_distr::Uniform;
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+use rand::Rng;
 
-// fn perform_operation(operation: FileOperation) {
-//     match operation {
-//         FileOperation::Create(filename) => {
-//             // TODO: Implement file creation logic
-//             if FileOperation::validate_file(&filename){
-//                 println!("File already exits");
-//             }
+const LEARNING_RATE: f64 = 0.1;
+const N_ITERATIONS: usize = 1000;
+const N_POINTS: usize = 100;
+const TRUE_B: f64 = 0.5;
+const TRUE_W: f64 = -3.0;
 
-//             fs::File::create("filename.txt").unwrap();
+/// Represents our linear regression model
+struct LinearRegression {
+    w: f64,
+    b: f64,
+}
 
-//             println!("File '{}' created successfully.", filename);
-//         }
-//         FileOperation::Rename(old_name, new_name) => {
-//             // TODO: Implement file renaming logic
-//             if FileOperation::validate_file(&old_name){
-//                 println!("Old file doesn't exist");
-//                 return;
-//             }
-//             fs::rename{from: &old_name,to: &new_name}.unwrap();
-//             println!("File renamed from '{}' to '{}' successfully.", old_name, new_name);
-//         }
-//     }
-// }
+impl LinearRegression {
+    fn new(w: f64, b: f64) -> Self {
+        Self { w, b }
+    }
 
-// fn main() {
-//     for _ in 0..2{
-//     println!("Choose an operation:");
-//     println!("1. Create a new file");
-//     println!("2. Rename an existing file");
+    fn predict(&self, x: &Array1<f64>) -> Array1<f64> {
+        x * self.w + self.b
+    }
 
-//     let mut choice = String = FileOperation::get_user_input();
+    fn update_params(&mut self, w_grad: f64, b_grad: f64) {
+        self.w -= LEARNING_RATE * w_grad;
+        self.b -= LEARNING_RATE * b_grad;
+    }
+}
 
-//     match choice.trim() {
-//         "1" => {
-//             // TODO: Prompt for new filename and call perform_operation
-//             println!("Type a name of file you want to create");
-//             let new_file: String = FileOperation::get_user_input();
-//             perform_operation(FileOperation::Create(new_file));
-//         }
-//         "2" => {
-//             // TODO: Prompt for old and new filenames and call perform_operation
-//             println!("Type a name of file you want to rename");
-//             let old_file: String = FileOperation::get_user_input();
-//             println!("Type a new name of file");
-//             let new_name: String = FileOperation::get_user_input();
-//             perform_operation(FileOperation::Rename(old_file,new_name))
-//         }
-//         _ => println!("Invalid choice"),
-//     }
-// }
-// }
-//-------------------------------------------------------------
+/// Generates synthetic data for training
+fn generate_data(rng: &mut ChaCha8Rng) -> (Array1<f64>, Array1<f64>) {
+    let x = Array1::random_using(N_POINTS, Uniform::new(0., 1.), rng);
+    let noise = Array1::random_using(N_POINTS, Uniform::new(-0.1, 0.1), rng);
+    let y = &x * TRUE_W + TRUE_B + noise;
+    (x, y)
+}
 
-// enum Pets {
-//     Dog(String,u8),
-//     Hamster(String),
-// }
+/// Computes mean squared error loss
+fn compute_loss(y_pred: &Array1<f64>, y_true: &Array1<f64>) -> f64 {
+    let error = y_pred - y_true;
+    error.map(|e| e * e).mean().unwrap()
+}
 
-// impl Pets{
+/// Computes gradients for parameters
+fn compute_gradients(
+    x: &Array1<f64>,
+    error: &Array1<f64>,
+) -> (f64, f64) {
+    let w_grad = 2.0 * (x * error).mean().unwrap();
+    let b_grad = 2.0 * error.mean().unwrap();
+    (w_grad, b_grad)
+}
 
-//     fn introduce_yourself(&self){
-//         match &self {
-//             Pets::Dog(name: String, age: u8) => {
-//                 println!("Hey my name is {}. I am {} years old",name,age);
-//             },
-//             Pets::Hamster(name: String) => println!("Hey my name is {}",name);
-//         }
-//     }   
-// }
+/// Print simple ASCII visualization of the loss
+fn print_loss_visualization(loss: f64, max_loss: f64, width: usize) {
+    let normalized = (loss / max_loss * width as f64) as usize;
+    print!("[");
+    for i in 0..width {
+        if i < normalized {
+            print!("#");
+        } else {
+            print!(" ");
+        }
+    }
+    println!("] {:.6}", loss);
+}
+
+fn main() {
+    let mut rng = ChaCha8Rng::seed_from_u64(42);
+    let (x_train, y_train) = generate_data(&mut rng);
+
+    // Initialize model with random parameters
+    let mut model = LinearRegression::new(
+        rng.gen_range(-1.0..=1.0),
+        rng.gen_range(-1.0..=1.0),
+    );
+
+    // Training loop
+    let mut losses = Vec::with_capacity(N_ITERATIONS);
+    let mut max_loss: f64 = 0.0;
+    
+    println!("\nStarting gradient descent training...");
+    println!("True parameters: w = {:.4}, b = {:.4}", TRUE_W, TRUE_B);
+    println!("Initial parameters: w = {:.4}, b = {:.4}", model.w, model.b);
+    println!("\nTraining progress (loss visualization):");
+    
+    for iteration in 0..N_ITERATIONS {
+        // Forward pass
+        let y_pred = model.predict(&x_train);
+        
+        // Compute loss
+        let loss = compute_loss(&y_pred, &y_train);
+        losses.push(loss);
+        max_loss = f64::max(max_loss, loss);
+        
+        // Compute gradients
+        let error = &y_pred - &y_train;
+        let (w_grad, b_grad) = compute_gradients(&x_train, &error);
+        
+        // Update parameters
+        model.update_params(w_grad, b_grad);
+
+        // Print progress every 100 iterations
+        if iteration % 100 == 0 {
+            println!("\nIteration {}:", iteration);
+            print_loss_visualization(loss, max_loss, 50);
+            println!("Parameters: w = {:.4}, b = {:.4}", model.w, model.b);
+        }
+    }
+
+    println!("\nTraining completed!");
+    println!("Final parameters: w = {:.4}, b = {:.4}", model.w, model.b);
+    println!("True parameters: w = {:.4}, b = {:.4}", TRUE_W, TRUE_B);
+    println!("Final loss: {:.6}", losses.last().unwrap());
+    
+    // Print some predictions vs actual values
+    println!("\nSample predictions:");
+    println!("   x   |  Actual y  | Predicted y");
+    println!("--------------------------------");
+    for i in 0..5 {
+        let x = x_train[i];
+        let y_true = y_train[i];
+        let y_pred = model.predict(&Array1::from_vec(vec![x]))[0];
+        println!("{:6.3} | {:10.3} | {:10.3}", x, y_true, y_pred);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_model_prediction() {
+        let model = LinearRegression::new(2.0, 1.0);
+        let x = Array1::from_vec(vec![1.0, 2.0, 3.0]);
+        let expected = Array1::from_vec(vec![3.0, 5.0, 7.0]);
+        let predicted = model.predict(&x);
+        assert_eq!(predicted, expected);
+    }
+
+    #[test]
+    fn test_loss_computation() {
+        let pred = Array1::from_vec(vec![1.0, 2.0, 3.0]);
+        let true_vals = Array1::from_vec(vec![1.0, 2.0, 3.0]);
+        let loss = compute_loss(&pred, &true_vals);
+        assert_eq!(loss, 0.0);
+    }
+
+    #[test]
+    fn test_gradient_computation() {
+        let x = Array1::from_vec(vec![1.0, 1.0, 1.0]);
+        let error = Array1::from_vec(vec![1.0, 1.0, 1.0]);
+        let (w_grad, b_grad) = compute_gradients(&x, &error);
+        assert_eq!(w_grad, 2.0);
+        assert_eq!(b_grad, 2.0);
+    }
+}
+
+//////////////////////////////////////////////
+
+//Converter from command line different sizes
+// Refactor
+
+use std::env;
+
+enum FileSize{
+    BYTE(u64),
+    KB(u64),
+    MB(u64),
+    GB(u64),
+    WrongFormat,
+}
 
 
-// fn main(){
-//     let p1 = Pets::Dog(format!("Black"),3);
-//     let p2 = Pets::Hamster(format!("Brown"));
+#[derive(Debug)]
+struct Formatter {
+    bytes:u64,
+    kilobytes:u64,
+    megabytes:u64,
+    gigabytes:u64,
+}
 
-//     introduce_yourself(p1);
+impl Formatter {
 
-// }
-//---------------------------------------------
+    fn converter(num:u64,need:FileSize,direction:bool) -> u64{
+        let degree = match need {
+            FileSize::BYTE(d) => d,
+            FileSize::KB(d) => d,
+            FileSize::GB(d) => d,
+            FileSize::MB(d) => d,
+            FileSize::WrongFormat => panic!("wrong format") 
+        };
+
+        match direction {
+            true => num*degree,
+            false => num/degree,
+        }
+
+        
+    }
+
+    fn new(num:u64,original:&str) -> Formatter {
+        let original = FileSize::new(original);
+
+        let original_bytes = Formatter::converter(num, original, true);
+
+        
+        Formatter{
+            bytes: original_bytes,
+            kilobytes: Formatter::converter(original_bytes,FileSize::new("kb"), false),
+            megabytes: Formatter::converter(original_bytes,FileSize::new("mb"), false),
+            gigabytes:Formatter::converter(original_bytes,FileSize::new("gb"), false),
+        }
+    }
+
+}
 
 
+
+
+impl FileSize {
+    
+    fn new(sizeacronym:&str) -> Self{
+        match sizeacronym {
+            "bytes" => FileSize::BYTE(1),
+            "kb" => FileSize::KB(1_000),
+            "mb" => FileSize::MB(1_000_000),
+            "gb" => FileSize::GB(1_000_000_000),
+            _ => FileSize::WrongFormat,
+                    
+        }
+    }
+}
+
+fn main() {
+
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 3{
+        println!("Usage is cargo run [filesize]");
+        return;
+        
+    }
+
+    let file_size:u64 = args[1].clone().parse().unwrap();
+    let size_type = args[2].clone();
+    let formatter = Formatter::new(file_size,size_type.as_str());
+    
+
+    println!("Formatter {:?}",formatter);
+    
+    
+    
+}
